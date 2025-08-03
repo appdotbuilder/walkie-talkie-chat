@@ -1,18 +1,28 @@
 
+import { db } from '../db';
+import { userSessionsTable } from '../db/schema';
 import { type UpdateSpeakingStatusInput, type UserSession } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function updateSpeakingStatus(input: UpdateSpeakingStatusInput): Promise<UserSession> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is updating the speaking status of a user (push-to-talk functionality).
-    // Update the user session's is_speaking field and notify other users in the same room.
-    // This enables the walkie-talkie style communication where only one person speaks at a time.
-    
-    return Promise.resolve({
-        id: input.session_id,
-        room_id: 'placeholder-room',
-        created_at: new Date(),
-        updated_at: new Date(),
-        is_connected: true,
-        is_speaking: input.is_speaking
-    } as UserSession);
-}
+export const updateSpeakingStatus = async (input: UpdateSpeakingStatusInput): Promise<UserSession> => {
+  try {
+    // Update the user session's speaking status
+    const result = await db.update(userSessionsTable)
+      .set({
+        is_speaking: input.is_speaking,
+        updated_at: new Date()
+      })
+      .where(eq(userSessionsTable.id, input.session_id))
+      .returning()
+      .execute();
+
+    if (result.length === 0) {
+      throw new Error(`User session with id ${input.session_id} not found`);
+    }
+
+    return result[0];
+  } catch (error) {
+    console.error('Update speaking status failed:', error);
+    throw error;
+  }
+};
